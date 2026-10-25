@@ -103,6 +103,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
+renderer.domElement.style.zIndex = '1';
+renderer.render(scene, camera);
 
 /* ===== LIGHT ===== */
 const hemi = new THREE.HemisphereLight(0xcce0ff, 0x224422, 1.1);
