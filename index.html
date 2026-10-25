@@ -267,6 +267,8 @@ function loop() {
   if(timerActive && !players.every(p=>p.userData.finished)) {
     timerMs += dt*1000;
     document.getElementById('timer').textContent = fmtTime(timerMs);
+    const p1 = players[0].userData, p2 = players[1].userData;
+    document.getElementById('score').textContent = p1.tricks + ' / ' + Math.round(p1.money) + ' kr';
   }
   players.forEach(pl => {
     if(pl.userData.finished) return;
