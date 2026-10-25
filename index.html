@@ -73,7 +73,8 @@ h1{font-family:'Orbitron',sans-serif;font-size:2.6rem;letter-spacing:0.08em;text
   <div><div class="label">Spiller 1</div><div class="value" id="p1-name">Albert</div></div>
   <div><div class="label">Spiller 2</div><div class="value" id="p2-name">Sidsel</div></div>
   <div><div class="label">Tid</div><div class="value" id="timer">00:00</div></div>
-  <div><div class="label">Point / Penge</div><div class="value" id="score">0 / 0 kr</div></div>
+  <div><div class="label">Point / Penge · P1</div><div class="value" id="p1-score">0 / 0 kr</div></div>
+  <div><div class="label">Point / Penge · P2</div><div class="value" id="p2-score">0 / 0 kr</div></div>
 </div>
 
 <div id="overlay">
@@ -268,7 +269,8 @@ function loop() {
     timerMs += dt*1000;
     document.getElementById('timer').textContent = fmtTime(timerMs);
     const p1 = players[0].userData, p2 = players[1].userData;
-    document.getElementById('score').textContent = p1.tricks + ' / ' + Math.round(p1.money) + ' kr';
+    document.getElementById('p1-score').textContent = p1.tricks + ' / ' + Math.round(p1.money) + ' kr';
+    document.getElementById('p2-score').textContent = p2.tricks + ' / ' + Math.round(p2.money) + ' kr';
   }
   players.forEach(pl => {
     if(pl.userData.finished) return;
