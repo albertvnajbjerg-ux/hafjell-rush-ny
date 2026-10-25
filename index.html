@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hafjell Rush — Skiløbsspil</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap');
+:root{--piste-grøn:#1a8a36;--piste-blå:#1565c0;--sne:#f0f6fa;--mørk:#0b1220;--guld:#ffd700;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--mørk);color:#fff;font-family:'Inter',system-ui,sans-serif;user-select:none}
+canvas{display:block}
+#ui{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:1.2rem;z-index:10}
+#ui > *{pointer-events:auto}
+h1{font-family:'Orbitron',sans-serif;font-size:2.6rem;letter-spacing:0.08em;text-transform:uppercase;background:linear-gradient(90deg,var(--guld),#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 4px 20px rgba(255,200,0,0.35);margin-bottom:.2rem}
+.subtitle{font-size:1rem;color:#cce0ff;letter-spacing:0.12em;margin-bottom:.6rem}
+.panel{background:rgba(11,18,32,0.72);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:1rem 1.4rem;box-shadow:0 12px 40px rgba(0,0,0,0.55);margin:.35rem 0;min-width:280px}
+.btn{display:inline-block;padding:.7rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#ffd700,#ff8c00);color:#111;font-weight:900;letter-spacing:.04em;cursor:pointer;transition:transform .08s,box-shadow .2s;text-decoration:none;margin:.25rem .15rem;box-shadow:0 6px 18px rgba(255,200,0,0.25)}
+.btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,200,0,0.35)}
+.btn.secondary{background:linear-gradient(135deg,#1a8a36,#0d6025);color:#fff;box-shadow:0 6px 18px rgba(26,138,54,0.25)}
+.btn.secondary:hover{box-shadow:0 10px 28px rgba(26,138,54,0.35)}
+.row{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;justify-content:center}
+.player-card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:.7rem .9rem;text-align:center;min-width:110px;transition:transform .15s}
+.player-card.active{border-color:var(--guld);box-shadow:0 0 12px rgba(255,215,0,0.25);transform:scale(1.03)}
+.player-card h3{font-family:'Orbitron',sans-serif;font-size:.95rem;margin-bottom:.15rem}
+.badge{font-size:.7rem;color:#aaa;text-transform:uppercase;letter-spacing:.06em}
+.status{font-size:.85rem;font-weight:700;color:#ffd700;margin-top:.2rem}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:1rem 1.5rem;pointer-events:none;z-index:20}
+#hud > div{pointer-events:auto;background:rgba(11,18,32,0.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:.55rem 1rem;box-shadow:0 8px 25px rgba(0,0,0,0.45)}
+#hud .label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:#88aadd}
+#hud .value{font-family:'Orbitron',sans-serif;font-size:1.15rem;color:#fff}
+#overlay{position:absolute;inset:0;background:rgba(11,18,32,0.82);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;z-index:50;transition:opacity .3s}
+#overlay.hidden{opacity:0;pointer-events:none}
+#results{max-width:480px;width:92%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:1.8rem 1.4rem;box-shadow:0 20px 60px rgba(0,0,0,0.6);text-align:center}
+#results h2{font-family:'Orbitron',sans-serif;font-size:1.8rem;margin-bottom:.6rem;background:linear-gradient(90deg,var(--guld),#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:.95rem}
+.result-row span:first-child{color:#9bb3d6}
+.result-row span:last-child{font-weight:700;color:#fff}
+.win{color:var(--guld);font-weight:900;text-transform:uppercase;letter-spacing:.08em;font-size:1.1rem;margin-top:.4rem}
+#start-panel{text-align:center;margin-top:6vh}
+#start-panel h1{font-size:3rem;margin-bottom:.2rem}
+.piste-info{font-size:.9rem;color:#aaccff;margin:.2rem 0}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="start-panel" class="panel">
+    <h1>Hafjell Rush</h1>
+    <div class="subtitle">Norge · Grøn piste 3 → Blå piste 23 · Burger Bar ved mål</div>
+    <div class="panel" style="margin-top:1rem;">
+      <div class="row" style="margin-bottom:.6rem;">
+        <div class="player-card active" id="card-albert">
+          <h3>Albert</h3>
+          <div class="badge">Sort tøj · Blå ski · Rød hjelm</div>
+          <div class="badge">GoPro på hjelmen</div>
+        </div>
+        <div class="player-card" id="card-sidsel">
+          <h3>Sidsel</h3>
+          <div class="badge">Mørkeblåt tøj · Rød hjelm · Røde ski</div>
+        </div>
+      </div>
+      <p style="font-size:.8rem;color:#aabbcc;">Vælg hver spiller (skift ved samme valg). P1: WASD+E · P2: Pile+Enter</p>
+      <div class="row" style="margin-top:.6rem;">
+        <a href="#" class="btn" onclick="startGame('Albert');return false;">Start som Albert</a>
+        <a href="#" class="btn secondary" onclick="startGame('Sidsel');return false;">Start som Sidsel</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="hud" style="display:none;">
+  <div><div class="label">Spiller 1</div><div class="value" id="p1-name">Albert</div></div>
+  <div><div class="label">Spiller 2</div><div class="value" id="p2-name">Sidsel</div></div>
+  <div><div class="label">Tid</div><div class="value" id="timer">00:00</div></div>
+  <div><div class="label">Point / Penge</div><div class="value" id="score">0 / 0 kr</div></div>
+</div>
+
+<div id="overlay">
+  <div id="results" class="hidden" style="display:none;">
+    <h2>Løb afsluttet</h2>
+    <div id="finish-detail"></div>
+    <div class="row" style="margin-top:1rem;">
+      <a href="#" class="btn" onclick="restart();return false;">Kør igen</a>
+      <a href="#" class="btn secondary" onclick="goShop();return false;">Gå til skibutik</a>
+      <a href="#" class="btn" onclick="toMenu();return false;">Til menu</a>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== THREE.JS SETUP ===== */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8cb8e6);
+scene.fog = new THREE.FogExp2(0x8cb8e6, 0.018);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 800);
+camera.position.set(0, 14, 28);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+/* ===== LIGHT ===== */
+const hemi = new THREE.HemisphereLight(0xcce0ff, 0x224422, 1.1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+sun.position.set(60, 120, -40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+scene.add(sun);
+
+/* ===== TERRAIN ===== */
+function terrainY(x, z) {
+  // grøn start (lav), blå mål (lavere), bakker undervejs
+  const t = Math.abs(x/120);
+  return 3 + Math.sin(x*0.03)*2 + Math.sin(z*0.025)*1.5 - t*4 + Math.sin(x*0.01)*3;
+}
+const groundMat = new THREE.MeshStandardMaterial({color:0xd6e8f5, roughness:0.9, metalness:0.05});
+const groundGeo = new THREE.PlaneGeometry(260, 260, 80, 80);
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+// deform
+const posAttr = groundGeo.attributes.position;
+for(let i=0; i<posAttr.count; i++){
+  const x = posAttr.getX(i), z = posAttr.getZ(i);
+  posAttr.setY(i, terrainY(x, z));
+}
+posAttr.needsUpdate = true;
+groundGeo.computeVertexNormals();
+scene.add(ground);
+
+/* ===== TREES ===== */
+function pineTree(x, y, z, scale=1) {
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35*scale, 0.55*scale, 2.5*scale), new THREE.MeshStandardMaterial({color:0x3a2a1a}));
+  trunk.position.set(0, 1.25*scale, 0);
+  trunk.castShadow = true;
+  group.add(trunk);
+  for(let i=0; i<3; i++){
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.1*scale*(0.7+i*0.15), 2.2*scale*(0.7+i*0.15), 8), new THREE.MeshStandardMaterial({color:0x1b5e20, roughness:0.8}));
+    cone.position.set(0, 2.5*scale + i*1.1*scale, 0);
+    cone.castShadow = true;
+    group.add(cone);
+  }
+  group.position.set(x, y, z);
+  scene.add(group);
+}
+for(let i=0;i<35;i++){
+  pineTree(-90+Math.random()*180, terrainY(-90+Math.random()*180, -100+Math.random()*200)+0.5, -100+Math.random()*200, 0.7+Math.random()*0.6);
+}
+
+/* ===== SIGNS ===== */
+function sign(x, y, z, text, color) {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.6), new THREE.MeshStandardMaterial({color:0x555555}));
+  pole.position.set(0, 1.3, 0); g.add(pole);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.08), new THREE.MeshStandardMaterial({color:color || 0x1565c0, roughness:0.3}));
+  board.position.set(0, 2.35, 0); g.add(board);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 256; canvas.height = 128;
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 60px Orbitron, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 64);
+  const tex = new THREE.CanvasTexture(canvas);
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.5), new THREE.MeshStandardMaterial({map: tex, transparent: true}));
+  label.position.set(0, 2.35, 0.045); g.add(label);
+  g.position.set(x, y, z); scene.add(g);
+}
+sign(0, terrainY(0,5)+0.5, 5, '3', '#1a8a36');
+sign(100, terrainY(100, -20)+0.5, -20, '23', '#1565c0');
+
+/* ===== BURGER BAR ===== */
+function burgerBar(x, y, z) {
+  const g = new THREE.Group();
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 3), new THREE.MeshStandardMaterial({color:0xb22222}));
+  roof.position.set(0, 2.5, 0); g.add(roof);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 3), new THREE.MeshStandardMaterial({color:0xf8e8d8}));
+  wall.position.set(0, 1, 0); g.add(wall);
+  g.position.set(x, y, z); scene.add(g);
+}
+burgerBar(105, terrainY(105, -25)+1, -25);
+
+/* ===== PLAYERS ===== */
+function makePlayer(name, color, skiColor) {
+  const group = new THREE.Group();
+  // body
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.7), new THREE.MeshStandardMaterial({color: color}));
+  body.rotation.x = Math.PI/2; body.position.set(0, 1.1, 0); group.add(body);
+  // helmet (red)
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), new THREE.MeshStandardMaterial({color: 0xff1a1a, roughness:0.3, metalness:0.2}));
+  helmet.position.set(0, 1.7, 0.05); group.add(helmet);
+  // GoPro on Albert
+  if(name==='Albert'){
+    const cam = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.12), new THREE.MeshStandardMaterial({color: 0x222}));
+    cam.position.set(0.2, 1.75, 0.2); group.add(cam);
+  }
+  // skis
+  const ski = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.15), new THREE.MeshStandardMaterial({color: skiColor, roughness:0.4}));
+  ski.position.set(0, 0.08, 0); group.add(ski);
+  group.userData = {name, velocity: new THREE.Vector3(), tricks: 0, falls: 0, money: 0, finished: false, startTime: 0};
+  return group;
+}
+const albert = makePlayer('Albert', 0x1a1a1a, 0x1565c0);
+albert.position.set(0, terrainY(0, 2)+1.1, 2);
+const sidsel = makePlayer('Sidsel', 0x0d2b52, 0xff1a2a);
+sidsel.position.set(-3, terrainY(-3, 2)+1.1, 2);
+scene.add(albert, sidsel);
+
+/* ===== CONTROLS / STATE ===== */
+let players = [albert, sidsel];
+let chosen = {p1: null, p2: null};
+let timerActive = false; let timerMs = 0; let lastFrame = Date.now();
+let shopUpgrades = JSON.parse(localStorage.getItem('hafjellUpgrades') || '{"speed":1}');
+
+function assign(ch) {
+  if(ch==='Albert') { if(chosen.p2!=='Albert' && chosen.p1!==ch) chosen.p1=ch; else if(chosen.p2===ch) chosen.p2=null; else chosen.p2=ch; }
+  else { if(chosen.p1!=='Sidsel' && chosen.p2!==ch) chosen.p2=ch; else if(chosen.p1===ch) chosen.p1=null; else chosen.p1=ch; }
+  // Ensure both different
+  if(chosen.p1===chosen.p2 && chosen.p1) { if(chosen.p1==='Albert') chosen.p2='Sidsel'; else chosen.p1='Sidsel'; }
+}
+
+function startGame(ch) {
+  assign(ch);
+  document.getElementById('start-panel').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('p1-name').textContent = chosen.p1 || 'Albert';
+  document.getElementById('p2-name').textContent = chosen.p2 || 'Sidsel';
+  timerActive = true; timerMs = 0;
+  albert.userData.startTime = Date.now(); sidsel.userData.startTime = Date.now();
+  requestAnimationFrame(loop);
+}
+
+/* ===== INPUT ===== */
+document.addEventListener('keydown', e => {
+  // P1 WASD + E (trick)
+  if(e.key==='w'||e.key==='a'||e.key==='s'||e.key==='d'||e.key==='e') { if(!players[0].userData.finished) { move(players[0], e.key); if(e.key==='e') trick(players[0]); } }
+  // P2 arrows + Enter (trick)
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Enter') { if(!players[1].userData.finished) { move(players[1], e.key); if(e.key==='Enter') trick(players[1]); } }
+  e.preventDefault();
+});
+
+function move(pl, k) {
+  const s = 0.35 * shopUpgrades.speed;
+  if(k==='w'||k==='ArrowUp') pl.userData.velocity.z = -s;
+  if(k==='s'||k==='ArrowDown') pl.userData.velocity.z = s;
+  if(k==='a'||k==='ArrowLeft') pl.userData.velocity.x = -s*0.6;
+  if(k==='d'||k==='ArrowRight') pl.userData.velocity.x = s*0.6;
+}
+
+function trick(pl) {
+  pl.userData.tricks += 1;
+  pl.userData.money += 50 + Math.random()*50;
+  pl.position.y += 0.5; // pop
+  setTimeout(()=>pl.position.y = terrainY(pl.position.x, pl.position.z)+1.1, 300);
+}
+
+/* ===== LOOP ===== */
+function loop() {
+  const now = Date.now();
+  const dt = Math.min((now-lastFrame)/1000, 0.1);
+  lastFrame = now;
+  if(timerActive && !players.every(p=>p.userData.finished)) {
+    timerMs += dt*1000;
+    document.getElementById('timer').textContent = fmtTime(timerMs);
+  }
+  players.forEach(pl => {
+    if(pl.userData.finished) return;
+    pl.position.x += pl.userData.velocity.x*dt;
+    pl.position.z += pl.userData.velocity.z*dt;
+    pl.position.y = terrainY(pl.position.x, pl.position.z)+1.1;
+    pl.rotation.y = Math.atan2(pl.userData.velocity.x, pl.userData.velocity.z);
+    // finish line approx x>95, z near -20
+    if(pl.position.x > 95 && pl.position.z > -35 && pl.position.z < 10) {
+      pl.userData.finished = true;
+      pl.userData.money += 200; // target bonus
+      checkFinish();
+    }
+    // fall chance if velocity high + steep
+    if(Math.abs(pl.userData.velocity.z) > 0.5) {
+      const slope = Math.abs(terrainY(pl.position.x+0.5, pl.position.z) - terrainY(pl.position.x-0.5, pl.position.z));
+      if(slope > 0.12 && Math.random()<0.003) {
+        pl.userData.falls += 1;
+        pl.userData.velocity.set(0,0,0);
+        pl.rotation.z = Math.PI*0.3;
+        setTimeout(()=>pl.rotation.z = 0, 600);
+      }
+    }
+  });
+  // decay velocity slightly (friction)
+  players.forEach(pl => { pl.userData.velocity.multiplyScalar(0.92); });
+  // camera follow average
+  const avgX = (albert.position.x + sidsel.position.x)/2;
+  const avgZ = (albert.position.z + sidsel.position.z)/2;
+  camera.position.x = avgX*0.7 + 0; camera.position.z = avgZ*0.7 + 30; camera.lookAt(avgX, 6, avgZ);
+  renderer.render(scene, camera);
+  if(timerActive || players.some(p=>!p.userData.finished)) requestAnimationFrame(loop);
+}
+
+function fmtTime(ms) {
+  const s = Math.floor(ms/1000);
+  const m = Math.floor(s/60); const sec = s%60;
+  return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+}
+
+function checkFinish() {
+  if(players.every(p=>p.userData.finished)) {
+    timerActive = false;
+    const p1 = players[0].userData, p2 = players[1].userData;
+    let winText = 'Uafgjort';
+    if(p1.tricks > p2.tricks && p1.falls < p2.falls) winText = 'Albert vinder';
+    else if(p2.tricks > p1.tricks && p2.falls < p1.falls) winText = 'Sidsel vinder';
+    else if(p1.tricks === p2.tricks && p1.falls < p2.falls) winText = 'Albert vinder';
+    else if(p1.tricks === p2.tricks && p2.falls < p1.falls) winText = 'Sidsel vinder';
+    else if(p1.tricks === p2.tricks && p1.falls === p2.falls) winText = 'Uafgjort';
+    else winText = (p1.tricks > p2.tricks ? 'Albert' : 'Sidsel') + ' vinder';
+    const html = `
+      <div class="result-row"><span>Spiller 1 (${p1.name})</span><span>${p1.tricks} tricks · ${p1.falls} fald · ${Math.round(p1.money)} kr</span></div>
+      <div class="result-row"><span>Spiller 2 (${p2.name})</span><span>${p2.tricks} tricks · ${p2.falls} fald · ${Math.round(p2.money)} kr</span></div>
+      <div class="win">${winText}</div>
+      <div style="font-size:.85rem;color:#9bb3d6;margin-top:.3rem;">Løbstid: ${fmtTime(timerMs)}</div>`;
+    document.getElementById('finish-detail').innerHTML = html;
+    document.getElementById('overlay').classList.remove('hidden');
+    document.getElementById('results').style.display = 'block';
+  }
+}
+
+function restart() { location.reload(); }
+function goShop() {
+  const speed = (parseFloat(localStorage.getItem('hafjellUpgrades')?.speed||'1') + 0.4).toFixed(1);
+  localStorage.setItem('hafjellUpgrades', JSON.stringify({speed: parseFloat(speed)}));
+  alert('Opgradering købt! Fart øget til '+speed+'. Gå til menu.');
+}
+function toMenu() { document.getElementById('overlay').classList.add('hidden'); document.getElementById('results').style.display='none'; document.getElementById('start-panel').style.display='block'; document.getElementById('hud').style.display='none'; }
+
+window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+</script>
+</body>
+</html>
